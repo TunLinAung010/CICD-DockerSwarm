@@ -1,0 +1,10 @@
+version: '3.8'
+
+services:
+  nginx:
+    image: 10.100.64.37:8082/nginx-nexus:v1.0
+    ports:
+      - "8030:80"
+    deploy:
+      replicas: 1
+
