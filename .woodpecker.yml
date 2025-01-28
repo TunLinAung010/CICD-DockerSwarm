@@ -1,0 +1,36 @@
+steps:
+  # Step 1: Build and Push Docker Image to Docker Hub
+  - name: Build and Push Docker image to Docker Hub
+    image: plugins/docker
+    settings:
+      registry: 10.100.64.37:8082
+      repo: 10.100.64.37:8082/nginx-nexus
+      tags: v1.0
+      insecure: true
+      username:
+        from_secret: NEXUS_USERNAME
+      password:
+        from_secret: NEXUS_PASSWORD
+      dockerfile: Dockerfile
+
+
+  - name: Deploy to Docker Swarm
+    image: alpine
+    environment:
+      SWARM_SSH_USER:
+        from_secret: SWARM_SSH_USER
+      SWARM_SSH_PASSWORD:
+        from_secret: SWARM_SSH_PASSWORD
+      NEXUS_USERNAME:
+        from_secret: NEXUS_USERNAME
+      NEXUS_PASSWORD:
+        from_secret: NEXUS_PASSWORD
+    commands:
+      - apk add --no-cache openssh-client sshpass
+      - sshpass -p "$SWARM_SSH_PASSWORD" ssh -o StrictHostKeyChecking=no "$SWARM_SSH_USER@10.100.64.37" -p 22 "
+          docker login -u $NEXUS_USERNAME -p $NEXUS_PASSWORD http://10.100.64.37:8082 &&
+          rm -rf ~/nginx-nexus-web && 
+          git clone http://$GITEA_USERNAME:$GITEA_PASSWORD@10.100.64.39:3000/tla/nginx-nexus-web.git ~/nginx-nexus-web && 
+          cd ~/nginx-nexus-web && 
+          docker stack rm nginx-nexus-web && 
+          docker stack deploy --compose-file docker-compose.yml nginx-nexus-web"
